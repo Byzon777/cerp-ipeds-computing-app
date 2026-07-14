@@ -55,13 +55,31 @@ server <- (function(input, output){
     )
   })
 
-# IPEDS: CIP codes - Task 3: always the full tracked list, independent of institution
+# IPEDS: 4 digit CIP family filter - narrows the 6 digit picker below it
+  output$ipeds_cip2_cip4_selector <- renderUI({
+    pickerInput(
+      inputId = "ipeds_cip2_cip4Input",
+      label = "Select or Type 4-digit CIP Family:",
+      choices = ipeds_cip4choices,
+      selected = unname(ipeds_cip4choices),
+      options = list(`actions-box` = TRUE,
+                     `selected-text-format` = 'count > 1',
+                     `count-selected-text` = '{0} of {1} families selected'),
+      multiple = TRUE
+    )
+  })
+
+# IPEDS: 6 digit CIP codes - Task 3: full tracked list, independent of
+# institution, limited to the 4 digit families selected above
   output$ipeds_cip2_cip_selector <- renderUI({
+    req(input$ipeds_cip2_cip4Input)
+    available_cip <- ipeds_allCipcodes[ipeds_cip4_of_all %in% input$ipeds_cip2_cip4Input]
+
     pickerInput(
       inputId = "ipeds_cip2_cipInput",
-      label = "Select or Type CIP Code (Computing):",
-      choices = ipeds_allCipcodes,
-      selected = ipeds_allCipcodes,
+      label = "Select or Type 6-digit CIP Code (Computing):",
+      choices = available_cip,
+      selected = available_cip,
       options = list(`actions-box` = TRUE,
                      `selected-text-format` = 'count > 1',
                      `count-selected-text` = '{0} of {1} programs selected'),

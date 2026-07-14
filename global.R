@@ -50,6 +50,59 @@ demo_grid <- dplyr::distinct(ipeds_national, gender, race)
 ipeds_allCipcodes <- sort(unique(ipeds_offerings$cipTitle))
 ipeds_uniqueCipcode = gsub(",",";",ipeds_allCipcodes)
 
+#### CIP families (4 digit filter) ----
+# A 6 digit CIP code like 11.0201 belongs to the 4 digit family 11.02.
+# The pattern below handles codes stored without a leading zero (e.g. 9.0702 -> 9.07).
+cipFamilyOf <- function(cipTitles) {
+  code6 <- sub(" .*", "", cipTitles)
+  sub("^([0-9]+\\.[0-9]{2}).*$", "\\1", code6)
+}
+
+# Display titles for the 4 digit series, per the NCES CIP 2020 taxonomy.
+# If a new family ever appears in the data without an entry here, it still
+# displays (with a generic label); add its official title to this list.
+cip4_seriesTitles <- c(
+  `9.07`  = "Radio, Television, and Digital Communication",
+  `10.03` = "Graphic Communications",
+  `11.01` = "Computer and Information Sciences, General",
+  `11.02` = "Computer Programming",
+  `11.03` = "Data Processing",
+  `11.04` = "Information Science/Studies",
+  `11.05` = "Computer Systems Analysis",
+  `11.07` = "Computer Science",
+  `11.08` = "Computer Software and Media Applications",
+  `11.09` = "Computer Systems Networking and Telecommunications",
+  `11.10` = "Computer/Information Technology Administration and Management",
+  `11.99` = "Computer and Information Sciences and Support Services, Other",
+  `14.09` = "Computer Engineering",
+  `26.11` = "Biomathematics, Bioinformatics, and Computational Biology",
+  `27.03` = "Applied Mathematics",
+  `30.08` = "Mathematics and Computer Science",
+  `30.16` = "Accounting and Computer Science",
+  `30.30` = "Computational Science",
+  `30.31` = "Human Computer Interaction",
+  `30.48` = "Linguistics and Computer Science",
+  `30.70` = "Data Science",
+  `30.71` = "Data Analytics",
+  `50.01` = "Visual and Performing Arts, General",
+  `51.27` = "Medical Illustration and Informatics",
+  `52.12` = "Management Information Systems and Services"
+)
+
+# family of each entry in ipeds_allCipcodes (parallel vector, used to filter
+# the 6 digit picker by the selected families)
+ipeds_cip4_of_all <- cipFamilyOf(ipeds_allCipcodes)
+
+# named choices for the family picker: names are shown, values are returned
+ipeds_allCip4codes <- sort(unique(ipeds_cip4_of_all))
+ipeds_cip4choices <- setNames(
+  ipeds_allCip4codes,
+  paste0(ipeds_allCip4codes, " ",
+         ifelse(is.na(cip4_seriesTitles[ipeds_allCip4codes]),
+                "(unlabeled family; see 6 digit codes)",
+                cip4_seriesTitles[ipeds_allCip4codes]))
+)
+
 # ipeds degree level factor grouping
 award_facLevel = c("Associate's",
                    "Bachelor's",

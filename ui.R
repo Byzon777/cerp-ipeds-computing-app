@@ -50,6 +50,7 @@ ui = navbarPage("",
                              ),
 
                              htmlOutput("ipeds_cip2_degree_selector"),
+                             htmlOutput("ipeds_cip2_cip4_selector"),
                              htmlOutput("ipeds_cip2_cip_selector"),
 
                              # Specify Data to Display
@@ -136,7 +137,7 @@ ui = navbarPage("",
                h3("How to use this app"),
                tags$ul(
                  tags$li("Choose the data level (Institution, State, or National) and the desired filtering criteria in the sidebar."),
-                 tags$li("The CIP code list always shows every computing program CERP tracks. If a selected institution did not report a selected program, its counts display as zero."),
+                 tags$li("The CIP code list always shows every computing program CERP tracks. Use the 4-digit CIP Family filter to narrow the 6-digit list to broader program groups. If a selected institution did not report a selected program, its counts display as zero."),
                  tags$li("Review the resulting table or plot. Percentages are calculated as a given value divided by the sum of its column."),
                  tags$li("Download the table data, plot data, or plot image to your local device by clicking the relevant ‘Download’ button."),
                  tags$li("Hover over a table row or plot bar for additional context.")
