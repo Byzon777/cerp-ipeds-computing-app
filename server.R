@@ -91,11 +91,19 @@ server <- (function(input, output){
 #### IPEDS: Reactive dataset making code ####
 #############################################
 
-# which gender x race rows the user wants displayed
+# which gender x race rows the user wants displayed.
+# In the "resident" view we need exactly two source rows, both with genders
+# combined: (all, all) and (all, U.S. Nonresident); the level reactives then
+# recode them into U.S. Residents vs U.S. Nonresident.
 selectedDemo = reactive({
-  demo_grid %>%
-    dplyr::filter(if (input$ipeds_cip2_genderInput == "all") gender == "all" else gender != "all",
-                  if (input$ipeds_cip2_raceInput  == "all") race  == "all" else race  != "all")
+  if (input$ipeds_cip2_raceInput == "resident") {
+    demo_grid %>%
+      dplyr::filter(gender == "all", race %in% c("all", "U.S. Nonresident"))
+  } else {
+    demo_grid %>%
+      dplyr::filter(if (input$ipeds_cip2_genderInput == "all") gender == "all" else gender != "all",
+                    if (input$ipeds_cip2_raceInput  == "all") race  == "all" else race  != "all")
+  }
 })
 
 # which CIP x degree x year cells match the sidebar (the complete national
@@ -133,7 +141,7 @@ ipeds_filtered_inst = reactive({
                   year <= input$ipeds_cip2_yearInput[2]) %>%
     dplyr::collect()
 
-  grid %>%
+  out <- grid %>%
     dplyr::left_join(inst_small,
       by = c("fips","inst_name","cipTitle","award_fac","year","gender","race")) %>%
     dplyr::mutate(awards = dplyr::coalesce(awards, 0L)) %>%
@@ -144,6 +152,14 @@ ipeds_filtered_inst = reactive({
       by = c("cipTitle","award_fac","gender","race","year")) %>%
     dplyr::mutate(totalNationalAwards = dplyr::coalesce(totalNationalAwards, 0L),
                   cipTitle = gsub(",",";",cipTitle))
+
+  if (input$ipeds_cip2_raceInput == "resident") {
+    #keep only the id columns plus this level's value column, then recode
+    out <- out %>%
+      dplyr::select(fips, inst_name, cipTitle, award_fac, year, gender, race, awards) %>%
+      makeResidentComparison("awards")
+  }
+  out
 })
 
 # STATE level frame: state totals for the selection, no institution needed
@@ -151,7 +167,7 @@ ipeds_filtered_state = reactive({
   req(input$ipeds_levelInput == "State", input$ipeds_cip2_fipsInput,
       input$ipeds_cip2_degreeInput, input$ipeds_cip2_cipInput)
 
-  ipeds_state_ds %>%
+  out <- ipeds_state_ds %>%
     dplyr::filter(fips %in% input$ipeds_cip2_fipsInput,
                   award_fac %in% input$ipeds_cip2_degreeInput,
                   cipTitle %in% input$ipeds_cip2_cipInput,
@@ -160,6 +176,11 @@ ipeds_filtered_state = reactive({
     dplyr::collect() %>%
     dplyr::semi_join(selectedDemo(), by = c("gender","race")) %>%
     dplyr::mutate(cipTitle = gsub(",",";",cipTitle))
+
+  if (input$ipeds_cip2_raceInput == "resident") {
+    out <- makeResidentComparison(out, "totalStateAwards")
+  }
+  out
 })
 
 # NATIONAL level frame: national totals for the selection, no state needed
@@ -167,13 +188,18 @@ ipeds_filtered_national = reactive({
   req(input$ipeds_levelInput == "National",
       input$ipeds_cip2_degreeInput, input$ipeds_cip2_cipInput)
 
-  ipeds_national %>%
+  out <- ipeds_national %>%
     dplyr::filter(award_fac %in% input$ipeds_cip2_degreeInput,
                   cipTitle %in% input$ipeds_cip2_cipInput,
                   year >= input$ipeds_cip2_yearInput[1],
                   year <= input$ipeds_cip2_yearInput[2]) %>%
     dplyr::semi_join(selectedDemo(), by = c("gender","race")) %>%
     dplyr::mutate(cipTitle = gsub(",",";",cipTitle))
+
+  if (input$ipeds_cip2_raceInput == "resident") {
+    out <- makeResidentComparison(out, "totalNationalAwards")
+  }
+  out
 })
 
 # the frame for whichever level is active (used by the table and its download)
@@ -265,8 +291,10 @@ downloadFileHeader = function(level) {
          "\nYear(s): ", yearsLabel(),
          " [Year is July 1 of the prior year to June 30 of the selected year.]",
          "\nDegree Level: ", input$ipeds_cip2_degreeInput,
-         "\n", ifelse(input$ipeds_cip2_raceInput != "all", input$ipeds_cip2_raceInput, "Aggregate Race/Ethnicity"),
-         "\n", ifelse(input$ipeds_cip2_genderInput != "all", input$ipeds_cip2_genderInput, "Aggregate Gender"),
+         "\n", ifelse(input$ipeds_cip2_raceInput == "resident", "U.S. Residents vs. U.S. Nonresidents",
+                      ifelse(input$ipeds_cip2_raceInput != "all", input$ipeds_cip2_raceInput, "Aggregate Race/Ethnicity")),
+         "\n", ifelse(input$ipeds_cip2_raceInput == "resident", "Aggregate Gender",
+                      ifelse(input$ipeds_cip2_genderInput != "all", input$ipeds_cip2_genderInput, "Aggregate Gender")),
          "\n\nPrograms Included:\n",
          gsub(",",";",paste0(input$ipeds_cip2_cipInput, sep="", collapse="\n")),
          "\n[Please confirm the CIP code(s) your academic unit uses for reporting.]\n\n")

@@ -61,15 +61,21 @@ ui = navbarPage("",
                                          c(max(ipeds_offerings$year)-3,max(ipeds_offerings$year)),
                                          sep=""),
                              h4("Customize the output"),
-                             radioButtons("ipeds_cip2_genderInput",
-                                          label = "Select view for student gender:",
-                                          choices = list("Aggregate gender" = "all",
-                                                         "Display gender"),
-                                          selected = "Display gender"),
+                             # gender toggle hides in the residents view, where
+                             # both groups always combine genders
+                             conditionalPanel(
+                               condition = "input.ipeds_cip2_raceInput != 'resident'",
+                               radioButtons("ipeds_cip2_genderInput",
+                                            label = "Select view for student gender:",
+                                            choices = list("Aggregate gender" = "all",
+                                                           "Display gender"),
+                                            selected = "Display gender")
+                             ),
                              radioButtons("ipeds_cip2_raceInput",
                                           label = "Select view for student race/ethnicity:",
                                           choices = list("Aggregate race/ethnicity" = "all",
-                                                         "Display race/ethnicity"),
+                                                         "Display race/ethnicity",
+                                                         "U.S. Residents vs. Nonresidents" = "resident"),
                                           selected = "Display race/ethnicity")
                            ),
 
@@ -138,6 +144,7 @@ ui = navbarPage("",
                tags$ul(
                  tags$li("Choose the data level (Institution, State, or National) and the desired filtering criteria in the sidebar."),
                  tags$li("The CIP code list always shows every computing program CERP tracks. Use the 4-digit CIP Family filter to narrow the 6-digit list to broader program groups. If a selected institution did not report a selected program, its counts display as zero."),
+                 tags$li("The race/ethnicity view offers a 'U.S. Residents vs. Nonresidents' option, which compares all U.S. resident students combined (every race/ethnicity group, both genders) against students in IPEDS's 'U.S. Nonresident' category (both genders). Resident counts are computed as the overall total minus the nonresident count."),
                  tags$li("Review the resulting table or plot. Percentages are calculated as a given value divided by the sum of its column."),
                  tags$li("Download the table data, plot data, or plot image to your local device by clicking the relevant ‘Download’ button."),
                  tags$li("Hover over a table row or plot bar for additional context.")

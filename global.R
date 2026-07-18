@@ -163,6 +163,39 @@ ipedsDataHTMLTable = function(data, level) {
     formatPercentage('Awards (%)', 2)
 }
 
+# Residents vs Nonresidents view: given a level frame restricted to the
+# gender=="all" rows for race "all" and "U.S. Nonresident", recode race into
+# two groups: "U.S. Residents" (= all minus nonresident) and "U.S. Nonresident".
+# valueCol is the frame's value column (awards / totalStateAwards / totalNationalAwards).
+makeResidentComparison = function(df, valueCol) {
+  wide <- df %>%
+    tidyr::pivot_wider(names_from = race,
+                       values_from = dplyr::all_of(valueCol),
+                       values_fill = 0)
+  if (!"all" %in% names(wide)) wide$all <- 0L
+  if (!"U.S. Nonresident" %in% names(wide)) wide$`U.S. Nonresident` <- 0L
+  wide %>%
+    #pmax guards against tiny negative values if a source row is anomalous
+    dplyr::mutate(`U.S. Residents` = pmax(all - `U.S. Nonresident`, 0L)) %>%
+    dplyr::select(-all) %>%
+    tidyr::pivot_longer(c(`U.S. Residents`, `U.S. Nonresident`),
+                        names_to = "race", values_to = valueCol)
+}
+
+# One place that decides the plot fill colors. Returns a named pair for the
+# residents view; otherwise reproduces the original v1 branch logic.
+ipedsPlotFillValues = function(df) {
+  if (nrow(df) > 0 && all(df$Population %in% c("U.S. Residents", "U.S. Nonresident"))) {
+    return(c(`U.S. Residents` = "#2731A1",   #CRA dark blue
+             `U.S. Nonresident` = "#A6093D")) #CRA red
+  }
+  ifelse(df$`Race/Ethnicity` != "all" & df$Gender != "all", colors_allGenderAllRaceEthnicity,
+         ifelse(df$`Race/Ethnicity` == "all" & df$Gender != "all", colors_gender,
+                ifelse(df$`Race/Ethnicity` != "all" & df$Gender == "all", colors_race_ipeds,
+                       ifelse(df$`Race/Ethnicity` == "all" & df$Gender == "all", colors_all,
+                              "#999999"))))
+}
+
 #### main plot functions ----
 # IPEDS filtered data --> plot data - inst
 mainFilteredDataToPlotData_ipeds_inst = function(data){
@@ -285,14 +318,7 @@ ipedsDataGGplot_inst = function(data){
     labs(x = "Year",
          y = "Computing Degrees Awarded (%)",
          col = "Population") +
-    scale_fill_manual(values = ifelse(data()$`Race/Ethnicity` != "all" & data()$Gender != "all", colors_allGenderAllRaceEthnicity,
-                                      ifelse(data()$`Race/Ethnicity` == "all" & data()$Gender != "all", colors_gender,
-                                             ifelse(data()$`Race/Ethnicity` != "all" & data()$Gender == "all", colors_race_ipeds,
-                                                    ifelse(data()$`Race/Ethnicity` == "all" & data()$Gender == "all", colors_all,
-                                                           "#999999")
-                                             )
-                                      )
-    ))
+    scale_fill_manual(values = ipedsPlotFillValues(data()))
 }
 
 # IPEDS plot state data --> static ggplot
@@ -307,14 +333,7 @@ ipedsDataGGplot_state = function(data){
     labs(x = "Year",
          y = "Computing Degrees Awarded (%)",
          col = "Population") +
-    scale_fill_manual(values = ifelse(data()$`Race/Ethnicity` != "all" & data()$Gender != "all", colors_allGenderAllRaceEthnicity,
-                                                                     ifelse(data()$`Race/Ethnicity` == "all" & data()$Gender != "all", colors_gender,
-                                                                            ifelse(data()$`Race/Ethnicity` != "all" & data()$Gender == "all", colors_race_ipeds,
-                                                                                   ifelse(data()$`Race/Ethnicity` == "all" & data()$Gender == "all", colors_all,
-                                                                                          "#999999")
-                                                                            )
-                                                                     )
-                                                           ))
+    scale_fill_manual(values = ipedsPlotFillValues(data()))
   }
 
 # IPEDS plot natl data --> static ggplot
@@ -329,14 +348,7 @@ ipedsDataGGplot_national = function(data){
     labs(x = "Year",
          y = "Computing Degrees Awarded (%)",
          col = "Population") +
-    scale_fill_manual(values = ifelse(data()$`Race/Ethnicity` != "all" & data()$Gender != "all", colors_allGenderAllRaceEthnicity,
-                                      ifelse(data()$`Race/Ethnicity` == "all" & data()$Gender != "all", colors_gender,
-                                             ifelse(data()$`Race/Ethnicity` != "all" & data()$Gender == "all", colors_race_ipeds,
-                                                    ifelse(data()$`Race/Ethnicity` == "all" & data()$Gender == "all", colors_all,
-                                                           "#999999")
-                                             )
-                                      )
-    ))
+    scale_fill_manual(values = ipedsPlotFillValues(data()))
 }
 
 ### Plot miscellanea ----
